@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Info, Loader2 } from 'lucide-react'
+import { Info, Loader2, Printer } from 'lucide-react'
 import PageWrapper from '../../components/layout/PageWrapper.jsx'
+import Button from '../../components/ui/Button.jsx'
 import SemesterSelector from '../../components/ui/SemesterSelector.jsx'
 import TimetableGrid from '../../components/timetable/TimetableGrid.jsx'
 import { useAuth } from '../../hooks/useAuth.js'
@@ -38,7 +39,15 @@ export default function MySchedule() {
   const selected = semesters.find((s) => s.id === semId)
 
   return (
-    <PageWrapper title="My Schedule" description="Your assigned classes for the selected semester. This view is read-only.">
+    <PageWrapper
+      title="My Schedule"
+      description="Your assigned classes for the selected semester. This view is read-only."
+      actions={
+        <Button variant="outline" onClick={() => window.print()}>
+          <Printer size={15} /> Download / Print
+        </Button>
+      }
+    >
       <div className="mb-5">
         {semId && (
           <SemesterSelector
