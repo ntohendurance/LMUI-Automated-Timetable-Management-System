@@ -1,0 +1,220 @@
+// LMUI E-Timetable — Prisma schema
+// PostgreSQL + Prisma Client
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  // Runtime queries go through the transaction-mode pooler (PgBouncer).
+  url       = env("DATABASE_URL")
+  // Migrations need a direct/session connection (no PgBouncer).
+  directUrl = env("DIRECT_URL")
+}
+
+// ----------------------------------------------------------------------------
+// Enums
+// ----------------------------------------------------------------------------
+enum Role {
+  ADMIN
+  LECTURER
+  STUDENT
+}
+
+enum Level {
+  YEAR_1
+  YEAR_2
+  YEAR_3
+  YEAR_4
+}
+
+enum SemesterTerm {
+  SEMESTER_1
+  SEMESTER_2
+}
+
+enum SemesterStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum Day {
+  MON
+  TUE
+  WED
+  THU
+  FRI
+  SAT
+}
+
+enum TimeSlot {
+  SLOT_8_10
+  SLOT_10_12
+  SLOT_12_14
+  SLOT_14_16
+  SLOT_16_18
+}
+
+enum ModificationAction {
+  CREATED
+  UPDATED
+  DELETED
+}
+
+// ----------------------------------------------------------------------------
+// Models
+// ----------------------------------------------------------------------------
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lecturer      Lecturer?
+  student       Student?
+  modifications TimetableModification[] @relation("ChangedBy")
+}
+
+model Department {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  code      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  courses        Course[]
+  lecturers      Lecturer[]
+  students       Student[]
+  timetableSlots TimetableSlot[]
+}
+
+model Lecturer {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  staffId            String   @unique
+  departmentId       String
+  availableDays      String[]
+  preferredTimeSlots String[]
+  // Self-registered lecturers start unapproved; admin-created ones are approved.
+  // Unapproved lecturers cannot sign in and are excluded from scheduling.
+  isApproved         Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department     Department      @relation(fields: [departmentId], references: [id])
+  courses        Course[]
+  timetableSlots TimetableSlot[]
+}
+
+model Student {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  matricule    String   @unique
+  departmentId String
+  level        Level
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id])
+}
+
+model Course {
+  id                String   @id @default(cuid())
+  code              String   @unique
+  title             String
+  creditUnits       Int
+  departmentId      String
+  lecturerId        String?
+  level             Level
+  preferredTimeSlot String?
+  preferredDay      String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  department     Department      @relation(fields: [departmentId], references: [id])
+  lecturer       Lecturer?       @relation(fields: [lecturerId], references: [id])
+  timetableSlots TimetableSlot[]
+}
+
+model Building {
+  id    String @id @default(cuid())
+  name  String @unique
+  rooms Room[]
+}
+
+model Room {
+  id         String   @id @default(cuid())
+  name       String
+  capacity   Int
+  buildingId String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  building       Building        @relation(fields: [buildingId], references: [id])
+  timetableSlots TimetableSlot[]
+}
+
+model Semester {
+  id           String         @id @default(cuid())
+  academicYear String
+  semester     SemesterTerm
+  startDate    DateTime
+  endDate      DateTime
+  status       SemesterStatus @default(DRAFT)
+  generatedAt  DateTime?
+  publishedAt  DateTime?
+  archivedAt   DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  timetableSlots TimetableSlot[]
+  modifications  TimetableModification[]
+
+  @@unique([academicYear, semester])
+}
+
+model TimetableSlot {
+  id             String   @id @default(cuid())
+  semesterId     String
+  courseId       String
+  lecturerId     String
+  roomId         String
+  day            Day
+  timeSlot       TimeSlot
+  level          Level
+  departmentId   String
+  hasConflict    Boolean  @default(false)
+  conflictReason String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  semester      Semester                @relation(fields: [semesterId], references: [id], onDelete: Cascade)
+  course        Course                  @relation(fields: [courseId], references: [id])
+  lecturer      Lecturer                @relation(fields: [lecturerId], references: [id])
+  room          Room                    @relation(fields: [roomId], references: [id])
+  department    Department              @relation(fields: [departmentId], references: [id])
+  modifications TimetableModification[]
+}
+
+model TimetableModification {
+  id           String             @id @default(cuid())
+  semesterId   String
+  slotId       String?
+  action       ModificationAction
+  changedBy    String
+  previousData Json?
+  newData      Json?
+  description  String
+  createdAt    DateTime           @default(now())
+
+  semester Semester       @relation(fields: [semesterId], references: [id], onDelete: Cascade)
+  slot     TimetableSlot? @relation(fields: [slotId], references: [id], onDelete: SetNull)
+  user     User           @relation("ChangedBy", fields: [changedBy], references: [id])
+}

@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-navy-50 text-navy-900 font-sans;
+  }
+  ::selection {
+    @apply bg-gold-300/60 text-navy-900;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: 'DM Serif Display', Georgia, serif;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgba(31, 51, 88, 0.25);
+    border-radius: 9999px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: rgba(31, 51, 88, 0.45);
+  }
+  .text-balance {
+    text-wrap: balance;
+  }
+}
